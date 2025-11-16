@@ -19,10 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
         id: 1,
         title: "TechFest 2025",
         category: "Tech",
-        date: "2025-11-20T10:00:00",
-        endDate: "2025-11-20T18:00:00", // NEW
+        date: "2025-11-15T10:00:00",
+        endDate: "2025-11-15T18:00:00", // NEW
         location: "Auditorium A",
-        description: "Annual technology festival featuring hackathons, tech talks, and exhibitions.",
+        description: "Annual technology festival featuring hackathons, tech talks, Roborumble and exhibitions.",
         organizer: "Tech Club",
         registrationLink: "https://register.example.com/techfest",
         prizes: "1st Prize: $500, 2nd Prize: $300, 3rd Prize: $100",
@@ -31,13 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
         attendees: 245,
         ratings: [5, 4, 5, 5, 4],
         reminded: false,
+        gallery:["https://educationpost.in/_next/image?url=https%3A%2F%2Fapi.educationpost.in%2Fs3-images%2F1740211756581-dtu.jpg&w=3840&q=75"],
       },
       {
         id: 2,
         title: "Cultural Night",
         category: "Cultural",
-        date: "2025-11-18T18:00:00",
-        endDate: "2025-11-18T22:00:00", // NEW
+        date: "2025-11-18T22:00:00",
+        endDate: "2025-11-18T24:00:00", // NEW
         location: "Main Stage",
         description: "Celebrate diversity with dance, music, and performances from various cultures.",
         organizer: "Cultural Committee",
@@ -48,10 +49,11 @@ document.addEventListener("DOMContentLoaded", () => {
         attendees: 180,
         ratings: [5, 5, 4, 5],
         reminded: false,
+        gallery:[],
       },
       {
         id: 3,
-        title: "Startup Summit (PAST)",
+        title: "Startup Summit",
         category: "Seminar",
         date: "2025-11-10T14:00:00", // Past event
         endDate: "2025-11-10T17:00:00", // NEW
@@ -65,13 +67,14 @@ document.addEventListener("DOMContentLoaded", () => {
         attendees: 120,
         ratings: [4, 5, 5],
         reminded: false,
+        gallery:[],
       },
       {
         id: 4,
-        title: "Live Art Workshop (CURRENT)",
+        title: "Live Art Workshop",
         category: "Workshop",
         date: "2025-11-16T13:00:00", // Current event (relative to Nov 16, 2:10 PM)
-        endDate: "2025-11-16T16:00:00", // NEW
+        endDate: "2025-11-16T24:00:00", // NEW
         location: "Art Studio 1",
         description: "Join us for a live painting and sculpting workshop.",
         organizer: "Art Club",
@@ -82,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
         attendees: 45,
         ratings: [5, 5],
         reminded: true,
+        gallery:[],
       }
     ],
     filteredEvents: [],
@@ -94,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     checkedIn: {},
     viewMode: "grid",
     showAddEvent: false,
+    gallery:[],
   };
 
   // --- SELECTORS ---
@@ -414,10 +419,9 @@ document.addEventListener("DOMContentLoaded", () => {
     
     lucide.createIcons();
   }
-
-  /**
+/**
    * Renders ALL modals: Auth, Add Event, or Event Detail
-   * NEW: Renders Auth modal. Updates Detail modal.
+   * THIS IS THE FULLY UPDATED FUNCTION
    */
   function renderModals() {
     modalContainer.innerHTML = ""; // Clear any existing modals
@@ -504,7 +508,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="form-field">
                       <label for="category">Category</label>
                       <select id="category" name="category" class="form-select">
-                        ${state.categories.filter(c => c !== "All").map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                        ${state.categories.filter(c => c !== "All").map(cat => `<option value="${cat}">${cat}</option>`).join('')} 
                       </select>
                     </div>
                     <div class="form-field">
@@ -557,7 +561,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (state.selectedEvent) {
       const event = state.selectedEvent;
       const avgRating = getAverageRating(event.ratings);
-      const status = getEventStatus(event); // NEW
+      const status = getEventStatus(event);
+      const isPast = status === 'past';
       
       // NEW: Create status badge
       let statusBadge = '';
@@ -586,10 +591,44 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `;
       }
+
+      // --- NEW: EVENT GALLERY SECTION ---
+      let galleryHTML = '';
+      // Make sure event.gallery exists before trying to use it
+      if (event.gallery && event.gallery.length > 0) {
+        galleryHTML = `
+          <div class="detail-modal-section">
+            <h3><i data-lucide="image"></i> Event Gallery</h3>
+            <div class="detail-modal-gallery">
+              ${event.gallery.map(url => `
+                <img src="${url}" alt="Event photo" class="gallery-image">
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // --- NEW: ADD PHOTO FORM (FOR ORGANIZERS ON PAST/CURRENT EVENTS) ---
+      let addPhotoHTML = '';
+      // --- THIS IS THE CORRECTED LOGIC ---
+      if (state.currentUser && state.currentUser.role === 'organizer' && (status === 'past' || status === 'current')) {
+        addPhotoHTML = `
+          <div class="detail-modal-section" style="background: var(--color-gray-100); padding: 1rem; border-radius: var(--border-radius);">
+            <h3>Add Photo to Gallery</h3>
+            <form id="add-photo-form" data-event-id="${event.id}">
+              <div class="form-field">
+                <label for="photo-url">Image URL</label>
+                <input type="url" id="photo-url" name="photoUrl" class="form-input" placeholder="https://images.unsplash.com/..." required>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="width: 100%;">
+                <i data-lucide="upload"></i> Add Photo
+              </button>
+            </form>
+          </div>
+        `;
+      }
       
-      // NEW: Disable buttons for past events
-      const isPast = status === 'past';
-      
+      // --- Main Modal HTML ---
       modalContainer.innerHTML = `
         <div class="modal-overlay" id="detail-modal-overlay">
           <div class="modal-content modal-content-lg">
@@ -626,7 +665,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 <p>${event.description}</p>
               </div>
               
-              ${prizesOrWinnersHTML} <div class="detail-modal-actions">
+              ${prizesOrWinnersHTML} 
+              
+              ${galleryHTML} 
+              
+              <div class="detail-modal-actions">
                 <a href="${event.registrationLink}" target="_blank" rel="noopener noreferrer" 
                    class="btn btn-primary ${isPast ? 'disabled' : ''}"> <i data-lucide="external-link"></i>
                   Register Now
@@ -637,7 +680,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </button>
               </div>
               
-              ${state.currentUser.role === 'organizer' && !isPast ? `
+              ${state.currentUser && state.currentUser.role === 'organizer' && !isPast ? `
                 <div class="detail-modal-section qr-code-box">
                   <h3><i data-lucide="qr-code"></i> Event Check-in QR Code</h3>
                   <div class="qr-code-box-inner">
@@ -646,7 +689,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
               ` : ''}
               
-              ${state.currentUser.role === 'student' && status === 'current' && !state.checkedIn[event.id] ? `
+              ${state.currentUser && state.currentUser.role === 'student' && status === 'current' && !state.checkedIn[event.id] ? `
                 <button class="btn btn-primary" style="width: 100%; background-color: var(--color-green-600);" data-action="check-in" data-event-id="${event.id}">
                   <i data-lucide="qr-code"></i>
                   Check In (Scan QR)
@@ -671,6 +714,8 @@ document.addEventListener("DOMContentLoaded", () => {
                   </div>
                 </div>
               ` : ''}
+              
+              ${addPhotoHTML} 
             </div>
           </div>
         </div>
@@ -826,6 +871,26 @@ document.addEventListener("DOMContentLoaded", () => {
       
       handleAddEvent(data);
     }
+    // --- THIS IS THE NEW BLOCK YOU NEED ---
+    if (e.target.id === "add-photo-form") {
+      const form = e.target;
+      const eventId = parseInt(form.dataset.eventId, 10);
+      const imageUrl = form.querySelector('input[name="photoUrl"]').value;
+
+      if (imageUrl && eventId) {
+        const event = state.events.find(e => e.id === eventId);
+        if (event) {
+          // Make sure event.gallery exists (it does for your 4 test events)
+          if (!event.gallery) {
+            event.gallery = []; 
+          }
+          event.gallery.push(imageUrl);
+          renderModals(); // Re-render the modal to show the new photo
+        }
+      }
+    }
+    // --- END OF NEW BLOCK ---
+
   });
 
   // --- INITIALIZATION ---
